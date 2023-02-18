@@ -3,6 +3,9 @@ import numpy as np
 from itertools import accumulate
 import cv2
 import matplotlib.pyplot as plt
+from src.const import bound_dict, findPeakResolution
+from findpeaks import findpeaks
+
 
 seed = None
 if seed is not None:
@@ -98,50 +101,6 @@ def add_noise(img, c=0.1):
     return noisy
 
 
-def show_plot(pos: dict, zoom=None):
-    if zoom is not None:
-        pos['O'] = pos['O'] @ zoom
-        pos['H'] = pos['H'] @ zoom
-    fig = plt.figure(figsize=(25, 25))
-    ax = fig.add_subplot(projection='3d')
-    ax.scatter(pos["O"][..., 0], pos["O"][..., 1], pos["O"][..., 2])
-
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
-
-    plt.gca().set_box_aspect((25, 25, 3))
-
-    ax.view_init(60, 35)
-
-    plt.show()
-
-
-def circPlot(img, pos, info={"color": (255, 255, 255), "radius": 0.0296}, mirror=True):
-    """_summary_
-
-    Args:
-        img (_type_): _description_
-        pos (_type_): _description_
-        info (dict, optional): _description_. Defaults to {"color": (255, 255, 255), "radius": 0.0296}.
-        O radius = 0.0296, H radius = 0.0184
-    Returns:
-        _type_: _description_
-    """
-    if mirror:
-        img = cv2.flip(img, 0)
-    pos = pos[..., :2]
-    resolution = np.diag(img.shape[:2])
-    pos = (pos @ resolution).astype(int)
-    radius = np.int(np.min(img.shape[:2]) * info['radius'])
-    for pos_i in pos:
-        cv2.circle(img, pos_i, radius, info['color'], -1)
-        cv2.circle(img, pos_i, radius, (0, 0, 0), 1)
-    if mirror:
-        img = cv2.flip(img, 0)
-    return img
-
-
 def indexGenerator():
     i = 0
     while True:
@@ -149,7 +108,7 @@ def indexGenerator():
         i += 1
 
 
-def cdist(mat_a: np.ndarray, mat_b: np.ndarray, diag = None):
+def cdist(mat_a: np.ndarray, mat_b: np.ndarray, diag=None):
     """_summary_
     Args:
         mat_a (np.ndarray): n * k
@@ -161,7 +120,108 @@ def cdist(mat_a: np.ndarray, mat_b: np.ndarray, diag = None):
     xy = mat_a @ mat_b.T
     x2 = x2.reshape(-1, 1)
     out = x2 - 2*xy + y2
+    out = out.astype(np.float32)
+    out = np.sqrt(out)
     if diag is not None:
         np.fill_diagonal(out, diag)
     return out
+
+
+def dist(pos_i, pos_j):
+    return np.linalg.norm(pos_i - pos_j)
+
+
+def isBound(node_i, node_j):
+    pair = {node_i[1]['elem'], node_j[1]['elem']}
+    pos_i = node_i[1]['position']
+    pos_j = node_j[1]['position']
+    if pair == {"O"}:
+        return bound_dict[{'O', 'O'}]['lower'] <= dist(pos_i, pos_j) <= bound_dict[{'O', 'O'}]['upper']
+    elif pair == {"O", "H"}:
+        return bound_dict[{'O', 'H'}]['lower'] <= dist(pos_i, pos_j) <= bound_dict[{'O', 'H'}]['upper']
+    elif pair == {"H"}:
+        return bound_dict[{'H', 'H'}]['lower'] <= dist(pos_i, pos_j) <= bound_dict[{'H', 'H'}]['upper']
+
+
+def imgsPeak(img: np.ndarray | list, fp: findpeaks | list, inverse=False, border=1, cluster_threshold = 3):
+    out = []
+    if isinstance(img, list) and isinstance(fp, findpeaks):
+        for i in img:
+            out.append(imgPeak(i, fp, inverse, border))
+    elif isinstance(img, list) and isinstance(fp, list):
+        for i, f in zip(img, fp):
+            out.append(imgPeak(i, f, inverse, border))
+    elif isinstance(img, np.ndarray) and isinstance(fp, list):
+        for f in fp:
+            out.append(imgPeak(img, f, inverse, border))
+    else:
+        out.append(imgPeak(img, fp, inverse, border))
+
+    out = np.concatenate(out, axis=0)
+    order = np.argsort(out[..., 2])[::-1]
+    out = out[order]
+    disMat = cdist(out[..., :2], out[..., :2]) < cluster_threshold
+    disMat = np.triu(disMat, k=1)
+    mem = {}
+    for i, j in zip(*disMat.nonzero()):
+        if i in mem:
+            mem[j] = mem[i]
+        else:
+            mem[j] = i
+
+    match = {}
+    for i in range(len(out)):
+        if i in mem:
+            match[mem[i]].append(i)
+        else:
+            match[i] = [i]
+
+    points = []
+    for i in match:
+        points.append(np.average(out[match[i]], axis=0))
+    points = np.asarray(points)
+
+    return points
+
+
+def arrayReshape(inp, inpsize: tuple | np.ndarray, outsize: tuple | np.ndarray, dtype = None):
+    print(outsize,inpsize)
+    zoom = np.asarray(outsize) / np.asarray(inpsize)
+    zoom = np.diag(zoom)
+    if inp.shape[1] == 2:
+        out = inp @ zoom[:2]
+    elif inp.shape[1] == 3:
+        out = inp @ zoom[:3]
+    if dtype is not None:
+        out.astype(dtype)
+    return out
+
+def imgPeak(img: np.ndarray, fp, inverse=False, border=1):
+    if inverse:
+        img = 255 - img
+    resolution = img.shape[:2]
+    out = fp.fit(img)
+    out = out['persistence'].loc[:, ["x", "y", "score"]].to_numpy()
+    if border != 0:
+        de = np.logical_or(np.logical_or((out[..., 0] + 1 - border) <= 0, (out[..., 1] + 1 - border) <= 0),
+                           (out[..., 0] - 1 + border) >= resolution[0], (out[..., 1] - 1 + border) >= resolution[1])
+        de = de.nonzero()
+        out = np.delete(out, de, axis=0)
+    return out
+
+def drawFindPeaksResult(img, pos, size= 3, color = (255,153,51), mirror=False):
+    if mirror:
+        img = cv2.flip(img, 0)
     
+    resolution =  np.asarray(img.shape[:2]) / findPeakResolution
+    resolution = np.diag(resolution)
+    startPoints = pos - (size - 1)/2
+    endPoints = pos + (size - 1)/2
+    startPoints = (startPoints[...,:2] @ resolution).astype(int)
+    endPoints = (endPoints[...,:2] @ resolution).astype(int)
+    for sp, ep in zip(startPoints, endPoints):
+        img = cv2.rectangle(img, sp, ep, color, -1)
+        
+    if mirror:
+        img = cv2.flip(img, 0)
+    return img
