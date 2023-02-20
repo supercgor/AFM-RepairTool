@@ -89,7 +89,7 @@ def transBind(background, img, pos=(0, 0), mode="topleft"):
     return bg
 
 
-def order_circ_mask(radius: int, pos: tuple = (0,0), org=None):
+def order_circ_mask(radius: int, pos: tuple = (0,0), org=None, repeat = False):
     if org is None:
         mask = np.zeros((radius * 2 + 1,radius * 2 + 1))
         pos = (pos[0] + radius, pos[1] + radius)
@@ -111,9 +111,11 @@ def order_circ_mask(radius: int, pos: tuple = (0,0), org=None):
         pos_order[..., 1] < 0, pos_order[..., 0] < 0))]
     l4 = l4[np.argsort(l4[..., 0])][::-1]
     l4 = l4[np.argsort(l4[..., 1])]
-    a = np.concatenate([l1, l2, l3, l4]) + pos
-    if org is None:
-       a = a - radius 
+    a = np.concatenate([l1, l2, l3, l4])
+    if org is not None:
+       a = a + pos
+    if repeat:
+        a = np.asarray([a[-1], *a, a[0]])
     a = (a[..., 0], a[..., 1])
     
     return a
