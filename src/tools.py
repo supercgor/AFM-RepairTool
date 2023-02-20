@@ -225,3 +225,4 @@ def drawFindPeaksResult(img, pos, size= 3, color = (255,153,51), mirror=False):
     if mirror:
         img = cv2.flip(img, 0)
     return img
+
