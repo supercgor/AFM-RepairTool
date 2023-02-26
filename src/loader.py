@@ -58,12 +58,27 @@ class sampler():
         info, positions = pl.load(f"{self.datalist[index]}.poscar")
         images = []
         for path in sorted(os.listdir(img_path), key=lambda x: int(x.split(".")[0])):
-            images.append(cv2.imread(f"{img_path}/{path}"))
+            img = cv2.imread(f"{img_path}/{path}")
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            images.append(img)
         
-        return {"info": info, "image": images, "position": positions}
+        return {"name": self.datalist[index],"info": info, "image": images, "position": positions}
+    
+    def get(self, name):
+        index = self.datalist.index(name)
+        return self.__getitem__(index)
+    
+    def get_npy(self, index):
+        loc = f"{self.abs_path}/npy/{self.datalist[index]}.npy"
+        pred = np.load(loc)
+        return pred
     
     def __len__(self):
         return len(self.datalist)
+    
+    def __next__(self):
+        for i in range(self.__len__):
+            return self.__getitem__(i)
     
 class poscarLoader():
     def __init__(self, path):

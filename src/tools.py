@@ -5,11 +5,53 @@ import cv2
 import matplotlib.pyplot as plt
 from src.const import bound_dict, findPeakResolution
 from findpeaks import findpeaks
-
+import os, sys
+import src.seelib.npmath as npmath
 
 seed = None
 if seed is not None:
     random.seed(seed)
+
+class poscar():
+    def __init__(self):
+        self.info = {}
+        self.ele = ("H","O")
+        self.scale = 1.0
+        self.lattice = [25,25,3]
+        self.poscar = ""
+        
+    def generate_poscar(self,P_pos):
+        output = ""
+        output += f"{' '.join(self.ele)}\n"
+        output += f"{self.scale:3.1f}" + "\n"
+        output += f"\t{self.lattice[0]:.8f} {0:.8f} {0:.8f}\n"
+        output += f"\t{0:.8f} {self.lattice[1]:.8f} {0:.8f}\n"
+        output += f"\t{0:.8f} {0:.8f} {self.lattice[2]:.8f}\n"
+        output += f"\t{' '.join([str(ele) for ele in P_pos])}\n"
+        output += f"\t{' '.join([str(P_pos[ele].shape[0]) for ele in P_pos])}\n"
+        output += f"Selective dynamics\n"
+        output += f"Direct\n"
+        for ele in P_pos:
+            P_ele = P_pos[ele]
+            for atom in P_ele:
+                pos = atom / self.lattice
+                output += f" {pos[0]:.8f} {pos[1]:.8f} {pos[2]:.8f} T T T\n"
+        self.poscar = output
+        return
+        
+    def save(self,pre_path):
+        with open(pre_path,'w') as f:
+            f.write(self.poscar)
+        return
+
+class HiddenPrints:
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
 
 
 class randomStep():
@@ -143,19 +185,19 @@ def isBound(node_i, node_j):
         return bound_dict[{'H', 'H'}]['lower'] <= dist(pos_i, pos_j) <= bound_dict[{'H', 'H'}]['upper']
 
 
-def imgsPeak(img: np.ndarray | list, fp: findpeaks | list, inverse=False, border=1, cluster_threshold = 3):
+def imgsPeak(img: np.ndarray | list, fp: findpeaks | list, inverse=False, border=1, cluster_threshold = 3, show = False, flip = None):
     out = []
     if isinstance(img, list) and isinstance(fp, findpeaks):
         for i in img:
-            out.append(imgPeak(i, fp, inverse, border))
+            out.append(imgPeak(i, fp, inverse, border, show, flip))
     elif isinstance(img, list) and isinstance(fp, list):
         for i, f in zip(img, fp):
-            out.append(imgPeak(i, f, inverse, border))
+            out.append(imgPeak(i, f, inverse, border, show, flip))
     elif isinstance(img, np.ndarray) and isinstance(fp, list):
         for f in fp:
-            out.append(imgPeak(img, f, inverse, border))
+            out.append(imgPeak(img, f, inverse, border, show, flip))
     else:
-        out.append(imgPeak(img, fp, inverse, border))
+        out.append(imgPeak(img, fp, inverse, border, show, flip))
 
     out = np.concatenate(out, axis=0)
     order = np.argsort(out[..., 2])[::-1]
@@ -180,7 +222,8 @@ def imgsPeak(img: np.ndarray | list, fp: findpeaks | list, inverse=False, border
     for i in match:
         points.append(np.average(out[match[i]], axis=0))
     points = np.asarray(points)
-
+    order = np.argsort(points[...,2])
+    points = points[order][::-1]
     return points
 
 
@@ -196,11 +239,16 @@ def arrayReshape(inp, inpsize: tuple | np.ndarray, outsize: tuple | np.ndarray, 
         out.astype(dtype)
     return out
 
-def imgPeak(img: np.ndarray, fp, inverse=False, border=1):
+def imgPeak(img: np.ndarray, fp, inverse=False, border=1, show = False, flip = None):
+    if flip is not None:
+        img = cv2.flip(img, flip)
     if inverse:
         img = 255 - img
     resolution = img.shape[:2]
-    out = fp.fit(img)
+    with HiddenPrints():
+        out = fp.fit(img)
+    if show:
+        fp.plot()
     out = out['persistence'].loc[:, ["x", "y", "score"]].to_numpy()
     if border != 0:
         de = np.logical_or(np.logical_or((out[..., 0] + 1 - border) <= 0, (out[..., 1] + 1 - border) <= 0),
@@ -226,3 +274,67 @@ def drawFindPeaksResult(img, pos, size= 3, color = (255,153,51), mirror=False):
         img = cv2.flip(img, 0)
     return img
 
+
+def drawPoints(img, pos, size= 13, color = (255,153,51), mirror=False):
+    if mirror:
+        img = cv2.flip(img, 0)
+
+    startPoints = pos - (size - 1)/2
+    endPoints = pos + (size - 1)/2
+    startPoints = (startPoints[...,:2]).astype(int)
+    endPoints = (endPoints[...,:2]).astype(int)
+    for sp, ep in zip(startPoints, endPoints):
+        img = cv2.rectangle(img, sp, ep, color, -1)
+        
+    if mirror:
+        img = cv2.flip(img, 0)
+    return img
+
+def proceedPred(mat: np.ndarray, conf: float = 0, nms: bool = True, show_conf: bool = True, lattice: tuple = (25,25,3)) -> dict:
+    """Turn prediction matrix to a dict, the values are (n, 4(3)) arraies.
+
+    Args:
+
+        mat (np.ndarray): prediction
+        conf (float) = cutoff conf. Defaults to 0.
+        nms (bool, optional): use nms. Defaults to True.
+        show_conf (bool, optional): show conf or not. Defaults to True.
+
+    Returns:
+        dict: {"O": np.ndarray, "H": np.ndarray}
+    """
+    out = {}
+    order = {0: "O", 1:"H"}
+    cutoff = {"O": 2.2, "H": 0.9}
+    pred_box = mat.shape[:3]
+    expend = np.diag([lattice[i] / pred_box[i] for i in range(3)])
+    mat = mat.reshape((*pred_box, 2, 4))
+    mat = np.transpose(mat, (3,0,1,2,4))
+    for i,submat in enumerate(mat):
+        # selections
+        elem = order[i]
+        select = submat[...,3] > conf
+        offset = submat[select]
+        pos = np.asarray(select.nonzero()).T
+        offset[...,:3] += pos
+        offset[...,:3] = offset[...,:3] @ expend
+        offset = offset[np.argsort(offset[...,3])][::-1]
+        # hide conf
+        if not show_conf:
+            offset = offset[...,:3]
+        # nms
+        if nms:
+            reduced_index = np.full(offset.shape[0], True)
+            dis_mat = npmath.cdist(offset[...,:3],offset[...,:3]) < cutoff[elem]
+            dis_mat = np.triu(dis_mat, k=1)
+            trues = dis_mat.nonzero()
+            for a,b in zip(*trues):
+                if reduced_index[a]:
+                    reduced_index[b] = False
+            offset = offset[reduced_index]
+        
+        out[elem] = offset
+        
+    
+    return out
+    

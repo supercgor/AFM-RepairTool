@@ -8,7 +8,15 @@ def nans(*args, **kwargs):
     out[:] = np.nan
     return out
     
-def cdist(mat_a: np.ndarray, mat_b: np.ndarray, diag=None):
+def cdist(mata: np.ndarray, matb: np.ndarray, diag=None):
+    if mata.ndim == 1:
+        mat_a = mata.reshape(1, -1)
+    else:
+        mat_a = mata
+    if matb.ndim == 1:
+        mat_b = matb.reshape(1, -1)
+    else:
+        mat_b = matb
     x2 = np.sum(mat_a ** 2, axis=1)
     y2 = np.sum(mat_b ** 2, axis=1)
     xy = mat_a @ mat_b.T
@@ -18,6 +26,10 @@ def cdist(mat_a: np.ndarray, mat_b: np.ndarray, diag=None):
     out = np.sqrt(out)
     if diag is not None:
         np.fill_diagonal(out, diag)
+    if mata.ndim == 1:
+        out = out[0]
+    if matb.ndim == 1:
+        out = out[...,0]
     return out
 
 def mask_sum(mat: np.ndarray, mask: np.ndarray):
@@ -48,7 +60,7 @@ def mask_argmin(mat: np.ndarray, mask: np.ndarray, axis = None):
     mat[np.where(mask == 0)] = np.inf
     return np.argmin(mat, axis=axis)
 
-def angle(vec_a, vec_b, mode="rad"):
+def v_angle(vec_a, vec_b, mode="rad"):
     """_summary_
 
     Args:
@@ -57,6 +69,18 @@ def angle(vec_a, vec_b, mode="rad"):
         mode (str, optional): rad or deg. Defaults to "rad".
     """
     out = np.arccos((vec_a @ vec_b) /np.linalg.norm(vec_a)/ np.linalg.norm(vec_b))
+    if np.isnan(out):
+        out = 0
     if mode == "deg":
         out = out * 180 / np.pi
     return out
+
+def p_angle(point_a, center, point_b, mode="rad"):
+    """_summary_
+
+    Args:
+        vec_a (_type_): _description_
+        vec_b (_type_): _description_
+        mode (str, optional): rad or deg. Defaults to "rad".
+    """
+    return v_angle(point_a - center, point_b - center, mode)

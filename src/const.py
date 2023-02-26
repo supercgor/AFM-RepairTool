@@ -1,14 +1,4 @@
-atom_info = {
-    "O": {
-        'color': (13, 13, 255),
-        'radius': 0.74
-    },
-    
-    "H": {
-        'color': (255, 255, 255),
-        'radius': 0.46
-    }
-}
+
 
 bound_dict = {
     ("O", "O"): {"color": (80, 160, 122), "lower": 2.6, "upper": 3.4, "thickness": 9},  # 3.2
