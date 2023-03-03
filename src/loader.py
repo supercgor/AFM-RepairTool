@@ -1,49 +1,8 @@
 import os
 import json
-import torch
-from torch import nn
 import cv2
 import numpy as np
-from torch.utils.data.dataset import Dataset
-from src.tools import randomStep
-
-class modelLoader():
-    def __init__(self, name, path = "/home/supercgor/gitfile/data/model"):
-        self.abs_path = f"{path}/{name}"
-        self.new = False
-        # check
-        if not os.path.exists(self.abs_path):
-            os.mkdir(self.abs_path)
-            self.new = True 
-        # load 
-        self._load()
-    
-    def _load(self):
-        if self.new:
-            # create new model
-            #TODO
-            pass
-        else:
-            # load old model
-            with open(f'{self.abs_path}/info.json') as f:
-                self.config = json.load(f)
-            
-            if self.config['network'] == "unet":
-                from network.unet3d_model import UNet3D as model
-            
-            self._model = model(1, self.config['channel'], self.config['Z'])
-            
-            self._model.load_state_dict(torch.load(f"{self.abs_path}/{self.config['name']}"))
-    
-    def cuda(self, parallel=False):
-        self._model = self._model.cuda()
-        if parallel:
-            device_ids = list(map(int,os.environ["CUDA_VISIBLE_DEVICES"].split(",")))
-            self._model = nn.DataParallel(self._model, device_ids=device_ids)
-    
-    @property
-    def model(self):
-        return self._model
+import torch
     
 class sampler():
     def __init__(self, name, path ="/home/supercgor/gitfile/data"):
@@ -69,8 +28,8 @@ class sampler():
         return self.__getitem__(index)
     
     def get_npy(self, index):
-        loc = f"{self.abs_path}/npy/{self.datalist[index]}.npy"
-        pred = np.load(loc)
+        loc = f"{self.abs_path}/npy/3A_transunet/{self.datalist[index]}.npy"
+        pred = torch.load(loc)
         return pred
     
     def __len__(self):

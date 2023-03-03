@@ -5,26 +5,30 @@ from src.tools import *
 from findpeaks import findpeaks
 from src.graph import Graph
 from src.solver import graphSolver
-import matplotlib.pyplot as plt
 
 
 s = sampler('exp')
 for i, pics in enumerate(s):
-    out = proceedPred(s.get_npy(i), conf = 0.7, nms=True)
+    pred = s.get_npy(i)
+    out = proceedPred(pred , conf = 0, nms=True)
     load = s[i]
     out_poscar = load['position']
     name = (load['name'])
     if "HDA_3" in name:
         y = [9,10,11]
+        #continue
     elif "HDA_4" in name:
         y = [6,7,8]
+        #continue
     elif "HDA_5" in name:
         y = [7,8,9]
+        #continue
     elif "HDA_6" in name:
         y = [6,7]
-        break
+        #continue
     elif "HDA_7" in name:
         y = [8,9,10]
+        #continue
     elif "HDA_8" in name:
         y = [10,11,12]
     print(name)

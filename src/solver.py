@@ -57,16 +57,19 @@ class graphSolver():
         os = self.select_nodes_by_num(3, 100)
         for oind in os:
             n = self.os(oind, mode = 1) # 所有軌道
+            hs = self.hs(oind)
             os = self.empty_edges(oind, mode = 1) #未佔有的軌道
             m = self.select_node_if_linked(oind, inverse=True) #未成鍵氫
-            i_oos = [o for o in n if self.e[o]['type'] == "OObond" and o not in os]# OO軌道
-            i_loos = [o for o in n if self.e[o]['type'] == "LOObond" and o not in os] # LOO軌道
+            i_oos = [o for o in n if self.e[o]['type'] == "OObond" and o not in os and any(self.ainb(h, o) for h in hs)]# OO軌道
+            i_loos = [o for o in n if self.e[o]['type'] == "LOObond" and o not in os and any(self.ainb(h, o) for h in hs)] # LOO軌道
             if len(m)>=1:
                 self.g.rmAtom(random.choice(m))
             elif len(i_loos) >= 1:
                 self.g.rmAtom(self.getH(oind, random.choice(i_loos)))
             elif len(i_oos) >= 1:
                 self.g.rmAtom(self.getH(oind, random.choice(i_oos)))
+            else:
+                self.g.rmAtom(random.choice(hs))
             
 
     def adder_solver(self):

@@ -3,7 +3,6 @@ import numpy as np
 from itertools import accumulate
 import cv2
 import matplotlib.pyplot as plt
-from src.const import bound_dict, findPeakResolution
 from findpeaks import findpeaks
 import os, sys
 import src.seelib.npmath as npmath
@@ -261,7 +260,7 @@ def drawFindPeaksResult(img, pos, size= 3, color = (255,153,51), mirror=False):
     if mirror:
         img = cv2.flip(img, 0)
     
-    resolution =  np.asarray(img.shape[:2]) / findPeakResolution
+    resolution =  np.asarray(img.shape[:2]) / (128,128)
     resolution = np.diag(resolution)
     startPoints = pos - (size - 1)/2
     endPoints = pos + (size - 1)/2
