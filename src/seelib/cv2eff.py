@@ -17,6 +17,21 @@ def brightness(img, b):
 def contrast(img, c):
     return bnc(img, 0, c)
 
+def drawPoints(img, pos: np.ndarray, size = 1, color = (255,255,255), flip = None):
+    """pos has to be strictly between 0 to 1 and 2d
+    """
+    if flip is not None:
+        pos[...,flip] = 1 - pos[...,flip]
+        
+    pos = pos * img.shape[-1::-1]
+    startPoints = pos - (size - 1)/2
+    endPoints = pos + (size - 1)/2
+    startPoints = (startPoints[...,:2]).astype(int)
+    endPoints = (endPoints[...,:2]).astype(int)
+    for sp, ep in zip(startPoints, endPoints):
+        img = cv2.rectangle(img, sp, ep, color, -1)
+        
+    return img
 
 def genText(text, fontFace=cv2.FONT_HERSHEY_COMPLEX_SMALL,
             fontScale=1,

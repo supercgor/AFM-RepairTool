@@ -171,19 +171,6 @@ def cdist(mat_a: np.ndarray, mat_b: np.ndarray, diag=None):
 def dist(pos_i, pos_j):
     return np.linalg.norm(pos_i - pos_j)
 
-
-def isBound(node_i, node_j):
-    pair = {node_i[1]['elem'], node_j[1]['elem']}
-    pos_i = node_i[1]['position']
-    pos_j = node_j[1]['position']
-    if pair == {"O"}:
-        return bound_dict[{'O', 'O'}]['lower'] <= dist(pos_i, pos_j) <= bound_dict[{'O', 'O'}]['upper']
-    elif pair == {"O", "H"}:
-        return bound_dict[{'O', 'H'}]['lower'] <= dist(pos_i, pos_j) <= bound_dict[{'O', 'H'}]['upper']
-    elif pair == {"H"}:
-        return bound_dict[{'H', 'H'}]['lower'] <= dist(pos_i, pos_j) <= bound_dict[{'H', 'H'}]['upper']
-
-
 def imgsPeak(img: np.ndarray | list, fp: findpeaks | list, inverse=False, border=1, cluster_threshold = 3, show = False, flip = None):
     out = []
     if isinstance(img, list) and isinstance(fp, findpeaks):
@@ -243,7 +230,7 @@ def imgPeak(img: np.ndarray, fp, inverse=False, border=1, show = False, flip = N
         img = cv2.flip(img, flip)
     if inverse:
         img = 255 - img
-    resolution = img.shape[:2]
+    resolution = img.shape[-1::-1]
     with HiddenPrints():
         out = fp.fit(img)
     if show:

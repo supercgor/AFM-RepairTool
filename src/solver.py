@@ -58,8 +58,10 @@ class graphSolver():
         for oind in os:
             n = self.os(oind, mode = 1) # 所有軌道
             hs = self.hs(oind)
+            hs = [hind for hind in hs if not self.n[hind]['Hup']]
             os = self.empty_edges(oind, mode = 1) #未佔有的軌道
             m = self.select_node_if_linked(oind, inverse=True) #未成鍵氫
+            m = [hind for hind in m if not self.n[hind]['Hup']]
             i_oos = [o for o in n if self.e[o]['type'] == "OObond" and o not in os and any(self.ainb(h, o) for h in hs)]# OO軌道
             i_loos = [o for o in n if self.e[o]['type'] == "LOObond" and o not in os and any(self.ainb(h, o) for h in hs)] # LOO軌道
             if len(m)>=1:
