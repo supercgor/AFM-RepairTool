@@ -6,12 +6,15 @@ random.seed(520)
 
 class graphSolver():
     def __init__(self, g: Graph):
-        self.g = g
-        self.e = self.g.edges
+        self.g = g 
+        """系统的图 Graph"""
+        self.e = self.g.edges 
+        """系统的边"""
         self.n = self.g.nodes
+        """系统的点"""
 
     def switch_solver(self):
-        """若只有一粒的原子，四周能轉，則轉他
+        """若只有一粒的原子，四周能转，则转他
 
         Args:
             repeat (int, optional): _description_. Defaults to 0.
@@ -25,7 +28,7 @@ class graphSolver():
             es = self.os(oind, mode = 1)
             es = [e for e in es if self.canswitch(e)]
             if len(es) >= 1:
-                oos = [o for o in es if self.e[o]['type'] == "OObond"] # OO軌道
+                oos = [o for o in es if self.e[o]['type'] == "OObond"] # OO轨道
                 if len(oos) == 0:
                     e = random.choice(es)
                 else:
@@ -35,7 +38,7 @@ class graphSolver():
                 
 
     def edge_solver(self):
-        """如果只有一條邊不滿足，則滿足那粒原子的那條邊
+        """如果只有一条边不满足，则满足那粒原子的那条边
 
         Args:
             repeat (int, optional): _description_. Defaults to 0.
@@ -52,18 +55,18 @@ class graphSolver():
                 self.addH(oind,direction)
 
     def tri_solver(self):
-        """刪去有三個氫的氧的某幾個氫
+        """删去有三个氢的氧的某几个氢
         """
         os = self.select_nodes_by_num(3, 100)
         for oind in os:
-            n = self.os(oind, mode = 1) # 所有軌道
+            n = self.os(oind, mode = 1) # 所有轨道
             hs = self.hs(oind)
             hs = [hind for hind in hs if not self.n[hind]['Hup']]
-            os = self.empty_edges(oind, mode = 1) #未佔有的軌道
-            m = self.select_node_if_linked(oind, inverse=True) #未成鍵氫
+            os = self.empty_edges(oind, mode = 1) #未占有的轨道
+            m = self.select_node_if_linked(oind, inverse=True) #未成键氢
             m = [hind for hind in m if not self.n[hind]['Hup']]
-            i_oos = [o for o in n if self.e[o]['type'] == "OObond" and o not in os and any(self.ainb(h, o) for h in hs)]# OO軌道
-            i_loos = [o for o in n if self.e[o]['type'] == "LOObond" and o not in os and any(self.ainb(h, o) for h in hs)] # LOO軌道
+            i_oos = [o for o in n if self.e[o]['type'] == "OObond" and o not in os and any(self.ainb(h, o) for h in hs)]# OO轨道
+            i_loos = [o for o in n if self.e[o]['type'] == "LOObond" and o not in os and any(self.ainb(h, o) for h in hs)] # LOO轨道
             if len(m)>=1:
                 self.g.rmAtom(random.choice(m))
             elif len(i_loos) >= 1:
@@ -75,7 +78,7 @@ class graphSolver():
             
 
     def adder_solver(self):
-        """用以解決邊界上只有1-2個鍵的氧，而且填不滿氫
+        """用以解决边界上只有1-2个键的氧，而且填不满氢
 
         """
         oss = self.select_nodes_by_bonds(0, 3)
@@ -85,16 +88,16 @@ class graphSolver():
                 pass
             if len(self.hs(oind)) >= 2:
                     continue
-            n = self.os(oind, mode = 1) # 所有軌道
-            os = self.empty_edges(oind, mode = 1) #未佔有的軌道
-            m = self.select_node_if_linked(oind) #成鍵氫
-            i_oos = [o for o in n if self.e[o]['type'] == "OObond" and o not in os]# OO軌道
-            i_loos = [o for o in n if self.e[o]['type'] == "LOObond" and o not in os] # LOO軌道
-            oos = [o for o in os if self.e[o]['type'] == "OObond"]# OO空軌道
-            loos = [o for o in os if self.e[o]['type'] == "LOObond"] # LOO空軌道
-            if len(n) == 2: # 兩個鍵
-                if len(self.hs(oind)) == 1: # 一個氫
-                    if len(os) == 0: # 無未佔有軌道
+            n = self.os(oind, mode = 1) # 所有轨道
+            os = self.empty_edges(oind, mode = 1) #未占有的轨道
+            m = self.select_node_if_linked(oind) #成键氢
+            i_oos = [o for o in n if self.e[o]['type'] == "OObond" and o not in os]# OO轨道
+            i_loos = [o for o in n if self.e[o]['type'] == "LOObond" and o not in os] # LOO轨道
+            oos = [o for o in os if self.e[o]['type'] == "OObond"]# OO空轨道
+            loos = [o for o in os if self.e[o]['type'] == "LOObond"] # LOO空轨道
+            if len(n) == 2: # 两个键
+                if len(self.hs(oind)) == 1: # 一个氢
+                    if len(os) == 0: # 无未占有轨道
                         e = self.os(oind, mode = 1)
                         if len(m) == 0:
                             direction = (self.pos(e[0]) + self.pos(e[1]))/2
@@ -110,12 +113,12 @@ class graphSolver():
                             j = j / np.linalg.norm(j)
                             direction = -0.32 * a - 0.95 * j + self.pos(oind)
                         self.addH(oind, direction)
-                    elif len(os) == 1: # 有一未佔有軌道
-                        if len(m) == 0: # 沒有成鍵氫
+                    elif len(os) == 1: # 有一未占有轨道
+                        if len(m) == 0: # 没有成键氢
                             self.addH(oind, self.pos(os[0]))
-                        elif len(m) == 1: #有一個未成鍵氫
+                        elif len(m) == 1: #有一个未成键氢
                             self.addH(oind, self.pos(m[0]))
-                    elif len(os) >= 1: # 有2未佔有軌道
+                    elif len(os) >= 1: # 有2未占有轨道
                         if len(oos) == 0:
                             indd = random.choice(os)
                             self.addH(oind, self.pos(indd))
@@ -125,9 +128,9 @@ class graphSolver():
                         elif len(oos) >= 2:
                             indd = random.choice(oos)
                             self.addH(oind, self.pos(indd))
-                elif len(self.hs(oind)) == 0: # 沒有氫
-                    if len(os)== 0: # 沒有空軌道
-                        if len(i_oos) == 0: # 沒有一個OO 選一個最大的生成對氫
+                elif len(self.hs(oind)) == 0: # 没有氢
+                    if len(os)== 0: # 没有空轨道
+                        if len(i_oos) == 0: # 没有一个OO 选一个最大的生成对氢
                             # 第一生成
                             s = random.sample(n, 2)
                             e, c, d = self.pos(oind),self.pos(s[0]), self.pos(s[1])
@@ -141,7 +144,7 @@ class graphSolver():
                             j = j / np.linalg.norm(j)
                             direction = -0.32 * a + 0.95 * j + self.pos(oind)
                             self.addH(oind, direction)
-                        elif len(i_oos) == 1: # 有一個OObond, 但被佔用了
+                        elif len(i_oos) == 1: # 有一个OObond, 但被占用了
                             # 第一生成
                             b = self.pos(random.choice(i_loos))
                             a = self.pos(i_oos[0]) - self.pos(oind)
@@ -158,7 +161,7 @@ class graphSolver():
                             j = j / np.linalg.norm(j)
                             direction = -0.32 * a + 0.95 * j + self.pos(oind)
                             self.addH(oind, direction)
-                        elif len(i_oos) >= 2: # 有兩個OObond, 但被佔用了
+                        elif len(i_oos) >= 2: # 有两个OObond, 但被占用了
                             # 第一生成
                             s = random.sample(i_oos, 2)
                             e, c, d = self.pos(oind),self.pos(s[0]), self.pos(s[1])
@@ -171,7 +174,7 @@ class graphSolver():
                             j = b - (b @ a) * a
                             j = j / np.linalg.norm(j)
                             direction = -0.32 * a + 0.95 * j + self.pos(oind)
-                    elif len(os) == 1: #有一空軌
+                    elif len(os) == 1: #有一空轨
                         # 第一生成
                         indd = os[0]
                         nind = self.addH(oind, self.pos(indd))
@@ -183,7 +186,7 @@ class graphSolver():
                         j = j / np.linalg.norm(j)
                         direction = -0.32 * a + 0.95 * j + self.pos(oind)
                         self.addH(oind, direction)
-                    elif len(os) > 1: #有兩空軌
+                    elif len(os) > 1: #有两空轨
                         if len(oos) == 0:
                             indd = random.sample(os, 2)
                             for i in indd:
@@ -195,7 +198,7 @@ class graphSolver():
                             indd = random.sample(oos, 2)
                             for i in indd:
                                 self.addH(oind, self.pos(i))
-            elif len(n) == 1: # 一個鍵
+            elif len(n) == 1: # 一个键
                 if len(self.hs(oind)) == 1:
                     if len(m) == 1:
                         b = np.random.uniform(-1, 1, 3)
@@ -239,23 +242,23 @@ class graphSolver():
                         j = j / np.linalg.norm(j)
                         direction = -0.32 * a + 0.95 * j + self.pos(oind)
                         self.addH(oind, direction)
-            elif len(n) == 0:
-                if len(os)== 0: # 沒有空軌道
-                    if len(i_oos) == 0: # 沒有一個OO 選一個最大的生成對氫
+            elif len(n) == 0: #没有键
+                if len(os)== 0: # 没有空轨道
+                    if len(i_oos) == 0: # 没有一个OO 选一个最大的生成对氢
                         # 第一生成
-                        s = random.sample(n, 2)
-                        e, c, d = self.pos(oind),self.pos(s[0]), self.pos(s[1])
-                        a_pal = 3 * e -c -d
-                        nind = self.addH(oind, a_pal)
+                        b = np.random.uniform(-1, 1, 3)
+                        b = b / np.linalg.norm(b)
+                        direction = b + self.pos(oind)
+                        nind = self.addH(oind, direction)
                         # 第二生成
-                        b = np.asarray([0,0,-1])
+                        b = np.random.uniform(-1, 1, 3)
                         a = self.pos(nind) - self.pos(oind)
                         b, a = b / np.linalg.norm(b), a / np.linalg.norm(a)
                         j = b - (b @ a) * a
                         j = j / np.linalg.norm(j)
                         direction = -0.32 * a + 0.95 * j + self.pos(oind)
                         self.addH(oind, direction)
-                    elif len(i_oos) == 1: # 有一個OObond, 但被佔用了
+                    elif len(i_oos) == 1: # 有一个OObond, 但被占用了
                         # 第一生成
                         b = self.pos(random.choice(i_loos))
                         a = self.pos(i_oos[0]) - self.pos(oind)
@@ -272,7 +275,7 @@ class graphSolver():
                         j = j / np.linalg.norm(j)
                         direction = -0.32 * a + 0.95 * j + self.pos(oind)
                         self.addH(oind, direction)
-                    elif len(i_oos) >= 2: # 有兩個OObond, 但被佔用了
+                    elif len(i_oos) >= 2: # 有两个OObond, 但被占用了
                         # 第一生成
                         s = random.sample(i_oos, 2)
                         e, c, d = self.pos(oind),self.pos(s[0]), self.pos(s[1])
@@ -287,29 +290,29 @@ class graphSolver():
                         direction = -0.32 * a + 0.95 * j + self.pos(oind)
 
     def remain_solver(self):
-        """用於解決3以上連結的粒子
+        """用于解决3以上连结的粒子
         """
         oss = self.select_nodes_by_bonds(3, 10)
         for oind in oss:
-            n = self.os(oind, mode = 1) # 所有軌道
-            os = self.empty_edges(oind, mode=1) #未佔有的軌道
-            m = self.select_node_if_linked(oind) #成鍵氫
-            i_oos = [o for o in n if self.e[o]['type'] == "OObond" and o not in os]# OO軌道
-            i_loos = [o for o in n if self.e[o]['type'] == "LOObond" and o not in os] # LOO軌道
-            oos = [o for o in os if self.e[o]['type'] == "OObond"]# OO空軌道
-            loos = [o for o in os if self.e[o]['type'] == "LOObond"] # LOO空軌道
-            if len(self.hs(oind)) == 2: # 含有兩個氫
+            n = self.os(oind, mode = 1) # 所有轨道
+            os = self.empty_edges(oind, mode=1) #未占有的轨道
+            m = self.select_node_if_linked(oind) #成键氢
+            i_oos = [o for o in n if self.e[o]['type'] == "OObond" and o not in os]# OO轨道
+            i_loos = [o for o in n if self.e[o]['type'] == "LOObond" and o not in os] # LOO轨道
+            oos = [o for o in os if self.e[o]['type'] == "OObond"]# OO空轨道
+            loos = [o for o in os if self.e[o]['type'] == "LOObond"] # LOO空轨道
+            if len(self.hs(oind)) == 2: # 含有两个氢
                 continue
-            elif len(self.hs(oind)) == 1: #只有一個氫
-                if len(os) == 0: #沒有空軌
-                    if len(m) == 0: #唯一的氫沒成鍵
-                        if len(i_oos) == 0: # 沒有一個OO 選一個最大的生成對氫
+            elif len(self.hs(oind)) == 1: #只有一个氢
+                if len(os) == 0: #没有空轨
+                    if len(m) == 0: #唯一的氢没成键
+                        if len(i_oos) == 0: # 没有一个OO 选一个最大的生成对氢
                         # 第一生成
                             s = random.sample(n, 2)
                             e, c, d = self.pos(oind),self.pos(s[0]), self.pos(s[1])
                             a_pal = 3 * e -c -d
                             nind = self.addH(oind, a_pal)
-                        elif len(i_oos) == 1: # 有一個OObond, 但被佔用了
+                        elif len(i_oos) == 1: # 有一个OObond, 但被占用了
                             # 第一生成
                             b = self.pos(random.choice(i_loos))
                             a = self.pos(i_oos[0]) - self.pos(oind)
@@ -318,13 +321,13 @@ class graphSolver():
                             j = j / np.linalg.norm(j)
                             direction = -0.32 * a + 0.95 * j + self.pos(oind)
                             nind = self.addH(oind, direction)
-                        elif len(i_oos) >= 2: # 有兩個OObond, 但被佔用了
+                        elif len(i_oos) >= 2: # 有两个OObond, 但被占用了
                             # 第一生成
                             c = max(i_oos, key = lambda x: self.e[x]['r'])
                             i_oos.remove(c)
                             d = max(i_oos, key = lambda x: self.e[x]['r'])
                             nind = self.addH(oind, (self.pos(c) + self.pos(d))/2)
-                    elif len(m) == 1: #唯一的氫成了鍵
+                    elif len(m) == 1: #唯一的氢成了键
                         b = np.asarray([0,0,-1])
                         a = self.pos(m[0]) - self.pos(oind)
                         b, a = b / np.linalg.norm(b), a / np.linalg.norm(a)
@@ -332,10 +335,10 @@ class graphSolver():
                         j = j / np.linalg.norm(j)
                         direction = -0.32 * a + 0.95 * j + self.pos(oind)
                         self.addH(oind, direction)  
-                elif len(os) == 1: #有一空軌
+                elif len(os) == 1: #有一空轨
                     indd = os[0]
                     self.addH(oind, self.pos(indd))
-                elif len(os) > 1: #有兩空軌
+                elif len(os) > 1: #有两空轨
                     if len(oos) == 0:
                         indd = random.choice(os)
                         self.addH(oind, self.pos(indd))
@@ -345,9 +348,9 @@ class graphSolver():
                     elif len(oos) >= 2:
                         indd = random.choice(oos)
                         self.addH(oind, self.pos(indd))
-            elif len(self.hs(oind)) == 0: #沒有氫
-                if len(os)== 0: # 沒有空軌道
-                    if len(i_oos) == 0: # 沒有一個OO 選一個最大的生成對氫
+            elif len(self.hs(oind)) == 0: #没有氢
+                if len(os)== 0: # 没有空轨道
+                    if len(i_oos) == 0: # 没有一个OO 选一个最大的生成对氢
                         # 第一生成
                         s = random.sample(n, 2)
                         e, c, d = self.pos(oind),self.pos(s[0]), self.pos(s[1])
@@ -361,7 +364,7 @@ class graphSolver():
                         j = j / np.linalg.norm(j)
                         direction = -0.32 * a + 0.95 * j + self.pos(oind)
                         self.addH(oind, direction)
-                    elif len(i_oos) == 1: # 有一個OObond, 但被佔用了
+                    elif len(i_oos) == 1: # 有一个OObond, 但被占用了
                         # 第一生成
                         b = self.pos(random.choice(i_loos))
                         a = self.pos(i_oos[0]) - self.pos(oind)
@@ -378,7 +381,7 @@ class graphSolver():
                         j = j / np.linalg.norm(j)
                         direction = -0.32 * a + 0.95 * j + self.pos(oind)
                         self.addH(oind, direction)
-                    elif len(i_oos) >= 2: # 有兩個OObond, 但被佔用了
+                    elif len(i_oos) >= 2: # 有两个OObond, 但被占用了
                         # 第一生成
                         s = random.sample(i_oos, 2)
                         e, c, d = self.pos(oind),self.pos(s[0]), self.pos(s[1])
@@ -391,7 +394,7 @@ class graphSolver():
                         j = b - (b @ a) * a
                         j = j / np.linalg.norm(j)
                         direction = -0.32 * a + 0.95 * j + self.pos(oind)
-                elif len(os) == 1: #有一空軌
+                elif len(os) == 1: #有一空轨
                     # 第一生成
                     indd = os[0]
                     nind = self.addH(oind, self.pos(indd))
@@ -403,7 +406,7 @@ class graphSolver():
                     j = j / np.linalg.norm(j)
                     direction = -0.32 * a + 0.95 * j + self.pos(oind)
                     self.addH(oind, direction)
-                elif len(os) > 1: #有兩空軌
+                elif len(os) > 1: #有两空轨
                     if len(oos) == 0:
                         indd = random.sample(os, 2)
                         for i in indd:
@@ -466,7 +469,7 @@ class graphSolver():
             return [(oind, hind) for hind in out]
 
     def empty_edges(self, oind, mode=0):
-        """給出沒有H的連結
+        """给出没有H的连结
 
         Args:
             oind (_type_): _description_
@@ -521,7 +524,7 @@ class graphSolver():
             return False
 
     def select_nodes_by_bonds(self, start, stop=None):
-        """按bond的數目給出nodes
+        """按bond的数目给出nodes
         """
         out = self.g.get_nodes_by_attributes("elem", "O")
         if stop is None:
@@ -529,7 +532,7 @@ class graphSolver():
         return [i for i in out if start <= self.len(i) < stop]
 
     def select_nodes_by_num(self, start, stop=None):
-        """按atoms的數目給出nodes
+        """按atoms的数目给出nodes
         """
         out = self.g.get_nodes_by_attributes("elem", "O")
         if stop is None:
@@ -560,7 +563,7 @@ class graphSolver():
         return out
 
     def canswitch(self, indd):
-        """2bond連結的switch 用以解決部分對着的H
+        """2bond连结的switch 用以解决部分对着的H
 
         Args:
             oind (_type_): _description_
@@ -571,6 +574,8 @@ class graphSolver():
         if self.len(indd) != 1:
             return False
         ind_a, ind_b = indd[0], indd[1]
+        if self.n[ind_a]['Hup'] or self.n[ind_b]["Hup"]:
+            return False
         max_num, min_num = max(len(self.hs(ind_a)), len(self.hs(ind_b))), min(len(self.hs(ind_a)), len(self.hs(ind_b)))
         if max_num > 2 and min_num < 2:
             return True
@@ -578,7 +583,7 @@ class graphSolver():
             return False
 
     def cfs(self, oind, indd):
-        """判定能否switch(來)
+        """判定能否switch(来)
 
         Args:
             oind (_type_): _description_
@@ -632,7 +637,7 @@ class graphSolver():
                 try_list.append(try_indd)
                 return try_list
 
-            # 一般不會發生, 因為只在 周圍有2個空位時才調用函數
+            # 一般不会发生, 因为只在 周围有2个空位时才调用函数
             return []
 
     def cfps(self, oind, indd):

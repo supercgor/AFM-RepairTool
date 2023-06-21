@@ -14,23 +14,27 @@ for i, pics in enumerate(s):
     load = s[i]
     out_poscar = load['position']
     name = (load['name'])
-    if "HDA_3" in name:
+    if "HDA3" in name:
         y = [9,10,11]
         #continue
-    elif "HDA_4" in name:
+    elif "HDA4" in name:
         y = [6,7,8]
         #continue
-    elif "HDA_5" in name:
+    elif "HDA5" in name:
         y = [7,8,9]
         #continue
-    elif "HDA_6" in name:
+    elif "HDA6" in name:
         y = [6,7]
         #continue
-    elif "HDA_7" in name:
+    elif "HDA7" in name:
         y = [8,9,10]
         #continue
-    elif "HDA_8" in name:
+    elif "HDA8" in name:
         y = [10,11,12]
+    elif "exp91" in name:
+        y = [4]
+    elif "ss0" in name:
+        y = [9, 10, 11]
     print(name)
     
     # Find for Hup

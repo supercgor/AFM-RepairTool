@@ -23,13 +23,14 @@ def drawPoints(img, pos: np.ndarray, size = 1, color = (255,255,255), flip = Non
     if flip is not None:
         pos[...,flip] = 1 - pos[...,flip]
         
-    pos = pos * img.shape[-1::-1]
+    pos = pos * img.shape
     startPoints = pos - (size - 1)/2
     endPoints = pos + (size - 1)/2
     startPoints = (startPoints[...,:2]).astype(int)
     endPoints = (endPoints[...,:2]).astype(int)
     for sp, ep in zip(startPoints, endPoints):
-        img = cv2.rectangle(img, sp, ep, color, -1)
+        # 這裡需要反向因為為numpy 是用 h, w format的, 而cv2是用 w, h format
+        img = cv2.rectangle(img, sp[::-1], ep[::-1], color, -1)
         
     return img
 

@@ -1,22 +1,23 @@
 import networkx as nx
 import numpy as np
+import math
 from .tools import indexGenerator
 import cv2
 from .seelib import npmath
 from .seelib import cv2eff as cve
-from .tools import poscar
-
+from .poscar import poscar
 
 class Graph(nx.Graph):
-    def __init__(self, name, imgs, pl, res = 10, *args, **kwargs):
+    def __init__(self, name, imgs, points_dict: dict, real_size = (3., 25., 25.), res = 10, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.name = name
         self.image = imgs
-        self.ref_img = self.image[3]
-        self.img_reso = np.asarray(self.image[0].shape[-1::-1])
-        self.box_reso = pl.lattice
+        self.ref_img = self.image[len(imgs.shape) // 2]
+        self.img_reso = np.array(self.image[0].shape)
+        self.box_reso = np.array(real_size)[...,(1,2,0)]
         self.out_reso = self.img_reso * res
-        self.position = pl.pos
+        points_dict = {k: v[...,(1,2,0)] for k, v in points_dict.items()}
+        self.position = points_dict
         self._img2out = self.out_reso/self.img_reso
         self._img2box = self.box_reso[:2]/self.img_reso
         self._box2out = self.out_reso/self.box_reso[:2]
@@ -24,11 +25,9 @@ class Graph(nx.Graph):
 
         self.index = indexGenerator()
         
-        self.addAtoms("O", pl.pos["O"])
-        self.addAtoms("H", pl.pos["H"])
-        
-        self.pl = pl
-        
+        self.addAtoms("O", self.position["O"].numpy())
+        self.addAtoms("H", self.position["H"].numpy())
+                
         hinds = self.get_nodes_by_attributes("elem", "H")
 
         # 這裡是將H拉近到去最近的氧，然後建立連結
@@ -282,7 +281,7 @@ class Graph(nx.Graph):
         if asarray:
             return np.asarray(out)
         else:
-            out
+            return out
 
     def get_edges_by_attributes(self, attribute=False, keyword=None):
         if keyword is not None:
@@ -336,7 +335,7 @@ class Graph(nx.Graph):
         if isinstance(img, int):
             img = self.image[img].copy()
             img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-        img = cv2.resize(img, self.out_reso)
+        img = cv2.resize(img, self.out_reso[::-1])
         if mirror:
             img = cv2.flip(img, 0)        
         reso = self._box2out
@@ -349,7 +348,7 @@ class Graph(nx.Graph):
         for i in order:
             target = img.copy()
             pos_i = self.nodes[i]['position'][:2] * reso
-            pos_i = pos_i.astype(int)
+            pos_i = pos_i.astype(int)[::-1]
             radi = self.nodes[i]['radius'] * np.min(reso)
             radi = radi.astype(int)
             color = self.nodes[i]['color']
@@ -369,23 +368,22 @@ class Graph(nx.Graph):
             img = cv2.flip(img, 0)
         return img    
                 
-    def plotEdges(self, img=0, edges=None, mirror=True, transparency=0.5, text=True):
+    def plotEdges(self, img=0, edges=None, mirror=False, transparency=0.5, text=True, thickness_mul = 0.1):
         if isinstance(img, int):
             img = self.image[img].copy()
             img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-        img = cv2.resize(img, self.out_reso)
+        img = cv2.resize(img, self.out_reso[::-1])
         if edges is None:
             edges = self.edges
         if mirror:
             img = cv2.flip(img, 0)
         draw = img.copy()
         reso = self._box2out
-
         edges = sorted(edges, key=lambda x: self.edges[x]["prior"])
 
         for e in edges:
             data = self.edges[e]
-            thickness = data['thickness']
+            thickness = int(math.ceil(data['thickness'] * thickness_mul))
             if thickness <= 0:
                 continue
             pos = nx.get_node_attributes(self, "position")
@@ -394,7 +392,7 @@ class Graph(nx.Graph):
             pos_i = pos_i.astype(int)
             pos_j = pos_j.astype(int)
             color = data['color']
-            cv2.line(draw, pos_i, pos_j, color, thickness)
+            cv2.line(draw, pos_i[::-1], pos_j[::-1], color, thickness)
             if text:
                 txt = cve.genText(
                     f"{int(self.edges[e]['prior'][0])},{int(self.edges[e]['prior'][1])}", flip=0)
@@ -420,9 +418,9 @@ class Graph(nx.Graph):
         for ind, pos in self.get_nodes_by_attributes("position"):
             out[self.nodes[ind]['elem']].append(pos)
         for key in out:
-            out[key] = np.asarray(out[key])
-        self.pl.upload_pos(out)
-        self.pl.save(name, save_dir)
+            out[key] = np.asarray(out[key])[...,(2,0,1)]
+        real_size = self.box_reso[...,(2,0,1)]
+        poscar.pos2poscar(save_dir, out, real_size)
 
     def detect_Hup(self, pix_Hup, spawn_O = True, O_height = 1.5, spawn_H = True):
         pos_O = pix_Hup.copy()
@@ -438,6 +436,7 @@ class Graph(nx.Graph):
                     self.ppNode(oind, newHind)
                     self.linkAtom(oind, newHind)
                     nearHs = self.nearNodes(newHind, elem = "H")
+                    # if the new H is too close to the other Hs, remove it
                     for hind, hpos in nearHs:
                         if hpos > 1.1:
                             break
@@ -510,7 +509,6 @@ Atoms
             opos = self.nodes[oind]['position']
             str_pos = f"{opos[0]:.4f} {opos[1]:.4f} {opos[2]:.4f}"
             part2 += f"{a_num} {i} 1 -1.1794 {str_pos} 0 0 0\n"
-            fix.append(a_num)
             a_num += 1
             for hind in self.nodes[oind]['bond']:
                 hpos = self.nodes[hind]['position']

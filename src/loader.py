@@ -1,38 +1,68 @@
 import os
 import cv2
 import numpy as np
+import torch
 from collections import OrderedDict
+from .poscar import poscar
+import json
 
 class Sampler():
-    def __init__(self, name, path="/home/supercgor/gitfile/data"):
-        self.abs_path = f"{path}/{name}"
-        if not os.path.exists(self.abs_path):
-            raise FileNotFoundError(f"Not such dataset in {self.abs_path}")
-        self.datalist = os.listdir(f"{self.abs_path}/afm")
+    def __init__(self, path = "../data/bulkexp", modelname = "tune_UNet_strong_baseline_withup", use_poscar = False):
+        self.path = path
+        self.modelname = modelname
+        if not os.path.exists(self.path):
+            raise FileNotFoundError(f"Not such dataset in {self.path}")
+        self.use_poscar = use_poscar
+        self.afm = os.listdir(f"{self.path}/combine_afm")
+        self.label = os.listdir(f"{self.path}/combine/{modelname}")
 
     def __getitem__(self, index):
-        img_path = f"{self.abs_path}/afm/{self.datalist[index]}"
-        pl = poscarLoader(f"{self.abs_path}/label")
-        pl.load(f"{self.datalist[index]}.poscar")
-        images = []
-        for path in sorted(os.listdir(img_path), key=lambda x: int(x.split(".")[0])):
-            img = cv2.imread(f"{img_path}/{path}")
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            images.append(img)
+        name = self.afm[index]
+        imgs = []
+        pths = os.listdir(f"{self.path}/combine_afm/{name}")
+        pths = sorted([p for p in pths if p.endswith(".png")], key=lambda x: int(x.split(".")[0]))
+        readme = json.load(open(f"{self.path}/combine_afm/{name}/readme.json"))
+        for path in pths:
+            img = cv2.imread(f"{self.path}/combine_afm/{name}/{path}", cv2.IMREAD_GRAYSCALE)
+            img = cv2.resize(img, readme["reso"])
+            img = np.flip(img.T, axis = 1)
+            img = img[None, ...]
+            imgs.append(img)
+            
+        imgs = np.stack(imgs) / 255
+        imgs = torch.from_numpy(imgs).float()
+        
+        if self.use_poscar:
+            dic = poscar._load_poscar(f"{self.path}/combine/{self.modelname}/{name}.poscar")
+        else:
+            dic = {}
+            box = poscar._load_npy(f"{self.path}/combine/{self.modelname}/{name}.npy") # D H W E C
+            dic["real_size"] = (3.0, readme["size"][0] * 10, readme["size"][1] * 10)
+            dic["elem"] = ("O", "H")
+            dic["scale"] = 1.0
+            pos = poscar.box2pos(box, real_size = dic["real_size"],threshold = 0.5, nms = True)
+            Z, X, Y = box.shape[:3]
+            dic['pos'] = pos
+        
+        
 
-        return self.datalist[index], images, pl
+        return name, imgs, dic
 
     def get(self, name):
-        index = self.datalist.index(name)
+        index = self.afm.index(name)
         return self.__getitem__(index)
 
     def get_npy(self, index):
-        loc = f"{self.abs_path}/npy/{self.datalist[index]}.npy"
+        name = self.label[index].split(".poscar")[0] if self.use_poscar else self.npy[index].split(".npy")[0]
+        loc = f"{self.path}/npy/{self.modelname}/{name}.npy"
         pred = np.load(loc)
         return pred
 
     def __len__(self):
-        return len(self.datalist)
+        if self.use_poscar:
+            return len(self.label)
+        else:
+            return len(self.npy)
 
     def __next__(self):
         for i in range(self.__len__):
@@ -90,7 +120,9 @@ class poscarLoader():
                         line = _clean(fr.readline())
                         position.append(line[:3].astype(float) * self._lattice)
                     self._pos[ele] = np.asarray(position)
-        
+            if NMS:
+                for ele, pos in self._pos.items():
+                    self._pos[ele] = self.nms(pos, self._cutoff[ele])
         self.name = name
 
     def _load_npy(self, name, NMS=True, conf=0.5):
