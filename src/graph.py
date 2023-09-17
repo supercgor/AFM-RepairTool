@@ -162,14 +162,7 @@ class Graph(nx.Graph):
 
             elif {elemi, elemj} == {"H"}:
                 pass
-                # if nodea['bond'] != [] and nodeb['bond'] != []:
-                #     if nodea['bond'] == nodeb['bond']:
-                #         edge['color'] = (255, 255, 255)
-                #         edge['thickness'] = 0
-                #         edge['type'] = "bond"
-        mask = np.zeros(self.img_reso)
-        mask = cv2.line(mask, (posi[:2] * self._box2img).astype(int) - 2,
-                        (posj[:2] * self._box2img).astype(int) - 2, color=1, thickness=1)
+
         prior = 0
         edge['prior'] = prior
         return edge
@@ -327,7 +320,7 @@ class Graph(nx.Graph):
         for oind in os:
             hs = self.nodes[oind]['bond']
             if len(hs) != 2:
-                raise f"There are some atoms do not have 2H: {oind}: {hs}"
+                raise ValueError(f"There are some atoms do not have 2H: {oind}: {hs}")
             else:
                 self.ppNode_angle(hs[0], oind, hs[1])
         
@@ -360,8 +353,8 @@ class Graph(nx.Graph):
             else:
                 img = cv2.addWeighted(target, 1, img, 0, 0)
             cv2.circle(img, pos_i, radi, (0, 0, 0), 1)
-            if text and self.nodes[i]['elem'] == "O":
-                txt = cve.genText(i, flip=0)
+            if text and self.nodes[i]['elem'] in ["O", "H"]:
+                txt = cve.genText(i, flip=0, fontScale = 2)
                 img = cve.transBind(img, txt, pos_i, "center")
 
         if mirror:
@@ -394,14 +387,30 @@ class Graph(nx.Graph):
             color = data['color']
             cv2.line(draw, pos_i[::-1], pos_j[::-1], color, thickness)
             if text:
+                print(self.edges[e]['prior'])
+                if isinstance(self.edges[e]['prior'], int):
+                    a, b = 0, 0
+                else:
+                    a, b = self.edges[e]['prior']
                 txt = cve.genText(
-                    f"{int(self.edges[e]['prior'][0])},{int(self.edges[e]['prior'][1])}", flip=0)
+                    f"{int(a)},{int(b)}", flip=0)
                 img = cve.transBind(img, txt, (pos_i + pos_j)//2, "center")
 
         img = cv2.addWeighted(draw, transparency, img, 1 - transparency, 0)
         if mirror:
             img = cv2.flip(img, 0)
         return img
+
+    @property
+    def pos_dict(self):
+        out = {}
+        for ind, pos in self.get_nodes_by_attributes("position"):
+            if self.nodes[ind]['elem'] not in out:
+                out[self.nodes[ind]['elem']] = []
+            out[self.nodes[ind]['elem']].append(pos)
+        for key in out:
+            out[key] = np.asarray(out[key])[...,(2,0,1)] # zxy
+        return out
 
     def save(self, save_dir, name = None, mode = "poscar"):
         """轉化為 .poscar 或是 .data 文件

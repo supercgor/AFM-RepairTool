@@ -123,12 +123,12 @@ class poscar():
                 box, 
                 real_size = (3, 25, 25), 
                 order = ("O", "H"), 
-                threshold = 0.7, # after sigmoid
+                threshold = 0.5, 
                 nms = True,
                 sort = True,
                 format = "DHWEC") -> Dict[str, torch.Tensor]:
         
-        threshold = math.log(threshold/(1-threshold))
+        threshold = 1 / (1 + math.exp(-threshold))
         
         newformat = "E D H W C"
         format, newformat = " ".join(format), " ".join(newformat)
@@ -149,6 +149,32 @@ class poscar():
         if nms:
             pos = cls.nms(pos)
         return pos
+    
+    @classmethod
+    def nms(cls, 
+            pd_pos: Dict[str, torch.Tensor], 
+            radius: Dict[str, float] = {"O":0.8, "H":0.6}, 
+            recusion = 1):
+        for e in pd_pos.keys():
+            pos = pd_pos[e]
+            if pos.nelement() == 0:
+                continue
+            if e == "O":
+                cutoff = radius[e] * 1.8
+            else:
+                cutoff = radius[e] * 1.8
+            DIS = torch.cdist(pos, pos)
+            DIS = DIS < cutoff
+            DIS = (torch.triu(DIS, diagonal= 1)).float()
+            restrain_tensor = DIS.sum(0)
+            restrain_tensor -= ((restrain_tensor != 0).float() @ DIS)
+            SELECT = restrain_tensor == 0
+            pd_pos[e] = pos[SELECT]
+            
+        if recusion <= 1:
+            return pd_pos
+        else:
+            return cls.nms(pd_pos, radius, recusion - 1)
     
     def save(self, name, pos):
         output = ""
@@ -176,30 +202,7 @@ class poscar():
 
     def save4npy(self, name, pred, NMS=True, conf=0.7):
         return self.save(name, self.npy2pos(pred, NMS=NMS, conf=conf))
-    
-    @classmethod
-    def nms(cls, pd_pos: Dict[str, torch.Tensor], radius: Dict[str, float] = {"O": 0.740, "H": 0.528}, recusion = 4):
-        for e in pd_pos.keys():
-            pos = pd_pos[e]
-            if pos.nelement() == 0:
-                continue
-            if e == "O":
-                cutoff = radius[e] * 2.6
-            else:
-                cutoff = radius[e] * 2.5
-            DIS = torch.cdist(pos, pos)
-            DIS = DIS < cutoff
-            DIS = (torch.triu(DIS, diagonal= 1)).float()
-            restrain_tensor = DIS.sum(0)
-            restrain_tensor -= ((restrain_tensor != 0).float() @ DIS)
-            SELECT = restrain_tensor == 0
-            pd_pos[e] = pos[SELECT]
-        
-        if recusion > 1:
-            return cls.nms(pd_pos, radius, recusion - 1)
-        else:
-            return pd_pos
-    
+
     @classmethod
     def pos2poscar(cls, 
                    path,                    # the path to save poscar

@@ -6,12 +6,9 @@ random.seed(520)
 
 class graphSolver():
     def __init__(self, g: Graph):
-        self.g = g 
-        """系统的图 Graph"""
-        self.e = self.g.edges 
-        """系统的边"""
-        self.n = self.g.nodes
-        """系统的点"""
+        self.g = g # graph
+        self.e = self.g.edges # edges 
+        self.n = self.g.nodes # points
 
     def switch_solver(self):
         """若只有一粒的原子，四周能转，则转他
@@ -25,6 +22,8 @@ class graphSolver():
         os = self.g.get_nodes_by_attributes("elem", "O")
         
         for oind in os:
+            # if oind == 23:
+            #     print("now")
             es = self.os(oind, mode = 1)
             es = [e for e in es if self.canswitch(e)]
             if len(es) >= 1:
